@@ -174,6 +174,78 @@ describe('rsbuild-plugin-i18next-extractor - ignore option', () => {
     expect(enTranslations).toHaveProperty('look');
   });
 
+  it('should not crash when all files of an entry are ignored (multi-entry)', async () => {
+    const multiEntryDistDir = path.join(fixtureDir, 'dist-ignore-multi-entry');
+    await fs.rm(multiEntryDistDir, { recursive: true, force: true });
+
+    const rsbuildConfig: RsbuildConfig = {
+      source: {
+        entry: {
+          index: './src/index',
+          'no-i18n': './src/no-i18n-entry',
+        },
+      },
+      output: {
+        target: 'node',
+        minify: false,
+        distPath: {
+          root: multiEntryDistDir,
+        },
+        filename: {
+          js: '[name].cjs',
+        },
+      },
+      plugins: [
+        pluginI18nextExtractor({
+          localesDir: './locales',
+          i18nextToolkitConfig: {
+            extract: {
+              ignore: '**/no-i18n-entry.ts',
+            },
+          },
+        }),
+      ],
+    };
+
+    const rsbuild = await createRsbuild({
+      cwd: fixtureDir,
+      rsbuildConfig,
+    });
+
+    // This should NOT throw "extractedKeys is not iterable"
+    await rsbuild.build();
+
+    // Verify the main entry still works correctly
+    const distIndexPath = path.join(multiEntryDistDir, 'index.cjs');
+    const distContent = await fs.readFile(distIndexPath, 'utf-8');
+
+    const enTranslationsMatch = distContent.match(
+      /const __I18N_EN_EXTRACTED_TRANSLATIONS__ = ({.*?});/s,
+    );
+    expect(enTranslationsMatch).toBeTruthy();
+    const enTranslations = JSON.parse(enTranslationsMatch?.[1] || '{}');
+    expect(enTranslations).toHaveProperty('title');
+
+    // Verify the no-i18n entry also builds without error
+    const distNoI18nPath = path.join(multiEntryDistDir, 'no-i18n.cjs');
+    const noI18nExists = await fs
+      .access(distNoI18nPath)
+      .then(() => true)
+      .catch(() => false);
+    expect(noI18nExists).toBe(true);
+
+    // The no-i18n entry should have empty translations (all files ignored)
+    const noI18nContent = await fs.readFile(distNoI18nPath, 'utf-8');
+    const noI18nEnMatch = noI18nContent.match(
+      /const __I18N_EN_EXTRACTED_TRANSLATIONS__ = ({.*?});/s,
+    );
+    expect(noI18nEnMatch).toBeTruthy();
+    const noI18nEnTranslations = JSON.parse(noI18nEnMatch?.[1] || '{}');
+    expect(Object.keys(noI18nEnTranslations)).toHaveLength(0);
+
+    await fs.rm(multiEntryDistDir, { recursive: true, force: true });
+  });
+
   it('should work without ignore option', async () => {
     const rsbuildConfig: RsbuildConfig = {
       source: {
