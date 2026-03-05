@@ -125,7 +125,7 @@ export class I18nextExtractorWebpackPlugin {
 
                   const extractedTranslations = pickTranslationsByKeys(
                     originTranslations[locale],
-                    extractedTranslationKeys[locale],
+                    extractedTranslationKeys[locale] ?? [],
                     (key) => {
                       // Use custom callback if provided, otherwise use default warning
                       if (this.options.onKeyNotFound) {
