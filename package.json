@@ -1,6 +1,6 @@
 {
   "name": "rsbuild-plugin-i18next-extractor",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "A Rsbuild plugin for extracting i18n translations using i18next-cli",
   "keywords": [
     "rsbuild",

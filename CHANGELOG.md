@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.4
+
+### Features
+
+- Add debug mode support via `DEBUG` environment variable to output extraction details to `node_modules/.rsbuild-plugin-i18next-extractor/`.
+
 ## 0.1.3
 
 ### Bug Fixes

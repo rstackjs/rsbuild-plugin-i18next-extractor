@@ -9,6 +9,16 @@ import {
   resolveLocaleFilePath,
 } from './utils.js';
 
+const DEBUG = (function isDebug() {
+  if (!process.env.DEBUG) {
+    return false;
+  }
+  const values = process.env.DEBUG.toLocaleLowerCase().split(',');
+  return ['rsbuild', 'rsbuild:i18next', 'rsbuild:*', '*'].some((key) =>
+    values.includes(key),
+  );
+})();
+
 interface I18nextExtractorWebpackPluginOptions
   extends PluginI18nextExtractorOptions {
   logger: { warn: (message: string) => void };
@@ -145,6 +155,46 @@ export class I18nextExtractorWebpackPlugin {
                       }
                     },
                   );
+
+                  // Write debug output to node_modules when DEBUG is enabled
+                  if (DEBUG) {
+                    try {
+                      const debugDir = path.resolve(
+                        compiler.context,
+                        'node_modules',
+                        '.rsbuild-plugin-i18next-extractor',
+                        entryName,
+                      );
+                      await fs.mkdir(debugDir, { recursive: true });
+                      const debugFilePath = path.join(
+                        debugDir,
+                        `${locale}.json`,
+                      );
+                      await fs.writeFile(
+                        debugFilePath,
+                        JSON.stringify(
+                          {
+                            locale,
+                            entry: entryName,
+                            extractedKeys: extractedTranslationKeys[locale],
+                            extractedTranslations,
+                            originTranslations: originTranslations[locale],
+                          },
+                          null,
+                          2,
+                        ),
+                        'utf-8',
+                      );
+                      console.log(
+                        `[rsbuild-plugin-i18next-extractor] Debug file written: ${path.relative(compiler.context, debugFilePath)}`,
+                      );
+                    } catch (error) {
+                      console.warn(
+                        `[rsbuild-plugin-i18next-extractor] Failed to write debug file for ${locale}:`,
+                        error,
+                      );
+                    }
+                  }
 
                   i18nTranslationDefinitions.push(
                     `const ${getLocaleVariableName(locale)} = ${JSON.stringify(extractedTranslations)};`,
