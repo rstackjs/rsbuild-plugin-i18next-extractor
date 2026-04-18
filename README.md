@@ -95,6 +95,7 @@ console.log(i18n.t('hello'));
 Exported APIs:
 
 - `getI18nextExtractorWebpackPluginHooks(compilation)`
+- `I18nextExtractorWebpackPluginHooks`
 - `AfterExtractPayload`
 - `RenderExtractedTranslationsPayload`
 
