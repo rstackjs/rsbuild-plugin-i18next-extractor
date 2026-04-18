@@ -1,12 +1,22 @@
 import type { Rspack } from '@rsbuild/core';
 import { AsyncSeriesWaterfallHook } from '@rspack/lite-tapable';
 
+export type ExtractedTranslationValue =
+  | string
+  | number
+  | boolean
+  | null
+  | ExtractedTranslations
+  | ExtractedTranslationValue[];
+
+export type ExtractedTranslations = Record<string, ExtractedTranslationValue>;
+
 export interface AfterExtractPayload {
   entryName: string;
   locales: string[];
   files: string[];
   extractedKeysByLocale: Record<string, string[]>;
-  extractedTranslationsByLocale: Record<string, Record<string, string>>;
+  extractedTranslationsByLocale: Record<string, ExtractedTranslations>;
 }
 
 export interface RenderExtractedTranslationsPayload {
@@ -14,7 +24,7 @@ export interface RenderExtractedTranslationsPayload {
   locale: string;
   variableName: string;
   extractedKeys: string[];
-  extractedTranslations: Record<string, string>;
+  extractedTranslations: ExtractedTranslations;
   targetAssetNames: string[];
   code: string;
   skip?: boolean;
