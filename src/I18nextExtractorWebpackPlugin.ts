@@ -10,6 +10,9 @@ import {
   resolveLocaleFilePath,
 } from './utils.js';
 
+type LocaleTranslationValue = unknown;
+type LocaleTranslations = Record<string, LocaleTranslationValue>;
+
 const DEBUG = (function isDebug() {
   if (!process.env.DEBUG) {
     return false;
@@ -98,10 +101,8 @@ export class I18nextExtractorWebpackPlugin {
                   .filter(filter);
 
                 // Load origin translations
-                const originTranslations: Record<
-                  string,
-                  Record<string, string>
-                > = {};
+                const originTranslations: Record<string, LocaleTranslations> =
+                  {};
                 for (const locale of locales) {
                   const localePath = resolveLocaleFilePath(
                     this.options.localesDir,
@@ -110,10 +111,9 @@ export class I18nextExtractorWebpackPlugin {
                   );
                   try {
                     const content = await fs.readFile(localePath, 'utf-8');
-                    originTranslations[locale] = JSON.parse(content) as Record<
-                      string,
-                      string
-                    >;
+                    originTranslations[locale] = JSON.parse(
+                      content,
+                    ) as LocaleTranslations;
                   } catch {
                     throw new Error(
                       `[rsbuild-plugin-i18next-extractor] Failed to read locale file "${localePath}"`,
@@ -132,7 +132,7 @@ export class I18nextExtractorWebpackPlugin {
 
                 const extractedTranslationsByLocale: Record<
                   string,
-                  Record<string, string>
+                  LocaleTranslations
                 > = {};
 
                 // Generate i18n resource definitions for each locale
