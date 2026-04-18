@@ -111,12 +111,18 @@ This hook is useful when you want to:
 Payload shape:
 
 ```ts
+type ExtractedTranslationValue = string | ExtractedTranslationsObject;
+
+type ExtractedTranslationsObject = {
+  [key: string]: ExtractedTranslationValue;
+};
+
 type AfterExtractPayload = {
   entryName: string;
   locales: string[];
   files: string[];
   extractedKeysByLocale: Record<string, string[]>;
-  extractedTranslationsByLocale: Record<string, Record<string, string>>;
+  extractedTranslationsByLocale: Record<string, ExtractedTranslationsObject>;
 };
 ```
 
