@@ -2,7 +2,10 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { createFilter } from '@rollup/pluginutils';
 import type { Rspack } from '@rsbuild/core';
-import { getI18nextExtractorWebpackPluginHooks } from './hooks.js';
+import {
+  getI18nextExtractorWebpackPluginHooks,
+  type ExtractedTranslations,
+} from './hooks.js';
 import type { PluginI18nextExtractorOptions } from './options.js';
 import {
   getLocalesFromDirectory,
@@ -10,8 +13,7 @@ import {
   resolveLocaleFilePath,
 } from './utils.js';
 
-type LocaleTranslationValue = unknown;
-type LocaleTranslations = Record<string, LocaleTranslationValue>;
+type LocaleTranslations = ExtractedTranslations;
 
 const DEBUG = (function isDebug() {
   if (!process.env.DEBUG) {
@@ -289,13 +291,13 @@ function collectModules<
  * Combine the origin translations and the extracted translation keys.
  */
 function pickTranslationsByKeys(
-  originTranslations: Record<string, string>,
+  originTranslations: ExtractedTranslations,
   extractedKeys: string[],
   onKeyNotFoundCallback: (key: string) => void,
-): Record<string, string> {
-  const result: Record<string, string> = {};
+): ExtractedTranslations {
+  const result: ExtractedTranslations = {};
   for (const key of extractedKeys) {
-    if (originTranslations[key]) {
+    if (key in originTranslations) {
       result[key] = originTranslations[key];
     } else {
       onKeyNotFoundCallback(key);

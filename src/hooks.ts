@@ -9,7 +9,9 @@ export type ExtractedTranslationValue =
   | ExtractedTranslations
   | ExtractedTranslationValue[];
 
-export type ExtractedTranslations = Record<string, ExtractedTranslationValue>;
+export interface ExtractedTranslations {
+  [key: string]: ExtractedTranslationValue;
+}
 
 export interface AfterExtractPayload {
   entryName: string;
