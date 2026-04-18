@@ -151,7 +151,7 @@ type RenderExtractedTranslationsPayload = {
   locale: string;
   variableName: string;
   extractedKeys: string[];
-  extractedTranslations: Record<string, string>;
+  extractedTranslations: Record<string, unknown>;
   targetAssetNames: string[];
   code: string;
   skip?: boolean;
