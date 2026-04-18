@@ -2,12 +2,18 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { createFilter } from '@rollup/pluginutils';
 import type { Rspack } from '@rsbuild/core';
+import {
+  getI18nextExtractorWebpackPluginHooks,
+  type ExtractedTranslations,
+} from './hooks.js';
 import type { PluginI18nextExtractorOptions } from './options.js';
 import {
   getLocalesFromDirectory,
   getLocaleVariableName,
   resolveLocaleFilePath,
 } from './utils.js';
+
+type LocaleTranslations = ExtractedTranslations;
 
 const DEBUG = (function isDebug() {
   if (!process.env.DEBUG) {
@@ -37,6 +43,8 @@ export class I18nextExtractorWebpackPlugin {
     });
 
     compiler.hooks.compilation.tap(this.constructor.name, (compilation) => {
+      getI18nextExtractorWebpackPluginHooks(compilation);
+
       const locales = getLocalesFromDirectory(
         compiler.context,
         this.options.localesDir,
@@ -76,6 +84,10 @@ export class I18nextExtractorWebpackPlugin {
                   .map((file) => compilation.getAsset(file))
                   .filter((file) => !!file);
 
+                const targetAssetNames = [...jsFiles, ...asyncJsFiles].map(
+                  (asset) => asset.name,
+                );
+
                 // Collect all the modules belong to current entry
                 const entryModules = new Set<string>();
                 for (const chunk of entrypoint.chunks) {
@@ -91,10 +103,8 @@ export class I18nextExtractorWebpackPlugin {
                   .filter(filter);
 
                 // Load origin translations
-                const originTranslations: Record<
-                  string,
-                  Record<string, string>
-                > = {};
+                const originTranslations: Record<string, LocaleTranslations> =
+                  {};
                 for (const locale of locales) {
                   const localePath = resolveLocaleFilePath(
                     this.options.localesDir,
@@ -103,10 +113,9 @@ export class I18nextExtractorWebpackPlugin {
                   );
                   try {
                     const content = await fs.readFile(localePath, 'utf-8');
-                    originTranslations[locale] = JSON.parse(content) as Record<
-                      string,
-                      string
-                    >;
+                    originTranslations[locale] = JSON.parse(
+                      content,
+                    ) as LocaleTranslations;
                   } catch {
                     throw new Error(
                       `[rsbuild-plugin-i18next-extractor] Failed to read locale file "${localePath}"`,
@@ -123,9 +132,12 @@ export class I18nextExtractorWebpackPlugin {
                   this.options.i18nextToolkitConfig,
                 );
 
-                // Generate i18n resource definitions for each locale
-                const i18nTranslationDefinitions: string[] = [];
+                const extractedTranslationsByLocale: Record<
+                  string,
+                  LocaleTranslations
+                > = {};
 
+                // Generate i18n resource definitions for each locale
                 for (const locale of locales) {
                   const localeFilePath = resolveLocaleFilePath(
                     this.options.localesDir,
@@ -155,6 +167,8 @@ export class I18nextExtractorWebpackPlugin {
                       }
                     },
                   );
+
+                  extractedTranslationsByLocale[locale] = extractedTranslations;
 
                   // Write debug output to node_modules when DEBUG is enabled
                   if (DEBUG) {
@@ -195,10 +209,45 @@ export class I18nextExtractorWebpackPlugin {
                       );
                     }
                   }
+                }
 
-                  i18nTranslationDefinitions.push(
-                    `const ${getLocaleVariableName(locale)} = ${JSON.stringify(extractedTranslations)};`,
-                  );
+                const hooks =
+                  getI18nextExtractorWebpackPluginHooks(compilation);
+                const afterExtractPayload = await hooks.afterExtract.promise({
+                  entryName,
+                  locales,
+                  files,
+                  extractedKeysByLocale: extractedTranslationKeys,
+                  extractedTranslationsByLocale,
+                });
+
+                const i18nTranslationDefinitions: string[] = [];
+                for (const locale of afterExtractPayload.locales) {
+                  const variableName = getLocaleVariableName(locale);
+                  const renderedPayload =
+                    await hooks.renderExtractedTranslations.promise({
+                      entryName: afterExtractPayload.entryName,
+                      locale,
+                      variableName,
+                      extractedKeys:
+                        afterExtractPayload.extractedKeysByLocale[locale] ?? [],
+                      extractedTranslations:
+                        afterExtractPayload.extractedTranslationsByLocale[
+                          locale
+                        ] ?? {},
+                      targetAssetNames,
+                      code: `const ${variableName} = ${JSON.stringify(
+                        afterExtractPayload.extractedTranslationsByLocale[
+                          locale
+                        ] ?? {},
+                      )};`,
+                    });
+
+                  if (renderedPayload.skip || !renderedPayload.code) {
+                    continue;
+                  }
+
+                  i18nTranslationDefinitions.push(renderedPayload.code);
                 }
 
                 // Replace the placeholder with actual extracted translations
@@ -242,13 +291,13 @@ function collectModules<
  * Combine the origin translations and the extracted translation keys.
  */
 function pickTranslationsByKeys(
-  originTranslations: Record<string, string>,
+  originTranslations: ExtractedTranslations,
   extractedKeys: string[],
   onKeyNotFoundCallback: (key: string) => void,
-): Record<string, string> {
-  const result: Record<string, string> = {};
+): ExtractedTranslations {
+  const result: ExtractedTranslations = {};
   for (const key of extractedKeys) {
-    if (originTranslations[key]) {
+    if (key in originTranslations) {
       result[key] = originTranslations[key];
     } else {
       onKeyNotFoundCallback(key);

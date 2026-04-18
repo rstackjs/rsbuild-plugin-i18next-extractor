@@ -88,6 +88,155 @@ import { i18n } from './i18n';
 console.log(i18n.t('hello'));
 ```
 
+## Hooks
+
+`rsbuild-plugin-i18next-extractor` now exposes compilation hooks so other build-time plugins can consume extracted translations or customize how the extracted payload is written back to JS assets.
+
+Exported APIs:
+
+- `getI18nextExtractorWebpackPluginHooks(compilation)`
+- `I18nextExtractorWebpackPluginHooks`
+- `AfterExtractPayload`
+- `RenderExtractedTranslationsPayload`
+
+### `afterExtract`
+
+Called after translation keys have been extracted and locale payloads have been assembled for an entry.
+
+This hook is useful when you want to:
+
+- store extracted translations for a later build step
+- inspect extracted keys for debugging or reporting
+- feed extracted translations into another plugin
+
+Payload shape:
+
+```ts
+type ExtractedTranslationValue = string | ExtractedTranslationsObject;
+
+type ExtractedTranslationsObject = {
+  [key: string]: ExtractedTranslationValue;
+};
+
+type AfterExtractPayload = {
+  entryName: string;
+  locales: string[];
+  files: string[];
+  extractedKeysByLocale: Record<string, string[]>;
+  extractedTranslationsByLocale: Record<string, ExtractedTranslationsObject>;
+};
+```
+
+### `renderExtractedTranslations`
+
+Called before extracted translations are prepended back into JS assets.
+
+The default behavior is still:
+
+```ts
+const __I18N_EN_EXTRACTED_TRANSLATIONS__ = { ... };
+```
+
+This hook is useful when you want to:
+
+- customize the injected JS code
+- skip JS injection for some or all locales
+- redirect the extracted payload to another artifact pipeline
+
+Payload shape:
+
+```ts
+type RenderExtractedTranslationsPayload = {
+  entryName: string;
+  locale: string;
+  variableName: string;
+  extractedKeys: string[];
+  extractedTranslations: Record<string, unknown>;
+  targetAssetNames: string[];
+  code: string;
+  skip?: boolean;
+};
+```
+
+### Hook Example
+
+```ts
+import {
+  defineConfig,
+  type RsbuildPlugin,
+  type Rspack,
+} from '@rsbuild/core';
+import {
+  getI18nextExtractorWebpackPluginHooks,
+  pluginI18nextExtractor,
+} from 'rsbuild-plugin-i18next-extractor';
+
+function pluginObserveI18nExtraction(): RsbuildPlugin {
+  return {
+    name: 'example:observe-i18n-extraction',
+    setup(api) {
+      api.modifyBundlerChain((chain) => {
+        chain
+          .plugin('example:observe-i18n-extraction')
+          .use(
+            class ObserveI18nExtractionPlugin {
+              apply(compiler: Rspack.Compiler) {
+                compiler.hooks.compilation.tap(
+                  'example:observe-i18n-extraction',
+                  (compilation) => {
+                    const hooks =
+                      getI18nextExtractorWebpackPluginHooks(compilation);
+
+                    hooks.afterExtract.tapPromise(
+                      'example:observe-i18n-extraction',
+                      async (payload) => {
+                        console.log(payload.entryName);
+                        console.log(payload.extractedTranslationsByLocale);
+                        return payload;
+                      },
+                    );
+
+                    hooks.renderExtractedTranslations.tapPromise(
+                      'example:observe-i18n-extraction',
+                      async (payload) => {
+                        if (payload.locale === 'zh-CN') {
+                          return {
+                            ...payload,
+                            skip: true,
+                            code: '',
+                          };
+                        }
+
+                        return payload;
+                      },
+                    );
+                  },
+                );
+              }
+            },
+          );
+      });
+    },
+  };
+}
+
+export default defineConfig({
+  plugins: [
+    pluginI18nextExtractor({
+      localesDir: './locales',
+    }),
+    pluginObserveI18nExtraction(),
+  ],
+});
+```
+
+### Hook Semantics
+
+- `afterExtract` is a waterfall hook and should return the payload it wants later consumers to receive.
+- `renderExtractedTranslations` is also a waterfall hook and should return the payload it wants the default emitter to use.
+- Setting `skip: true` or returning an empty `code` string prevents that locale payload from being injected into JS assets.
+- `targetAssetNames` contains all synchronous and async JS assets that would otherwise receive the injected definitions for the current entry.
+
 ## Options
 
 ### `localesDir`
