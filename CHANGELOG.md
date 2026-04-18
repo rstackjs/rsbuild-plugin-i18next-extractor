@@ -1,5 +1,11 @@
 # Changelog
 
+## Next
+
+### Breaking Changes
+
+- `i18next-cli` is now a peer dependency instead of a bundled dependency. Make sure to install `i18next-cli` in your app alongside `rsbuild-plugin-i18next-extractor`.
+
 ## 0.2.0
 
 ### Features
