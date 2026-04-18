@@ -19,7 +19,7 @@ This plugin uses the Rspack module graph to override the `extract.input` configu
 ## Installation
 
 ```bash
-npm add rsbuild-plugin-i18next-extractor --save-dev
+npm add rsbuild-plugin-i18next-extractor i18next-cli --save-dev
 ```
 
 ## Usage
