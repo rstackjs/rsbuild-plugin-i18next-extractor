@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0
+
+### Features
+
+- Add public compilation hooks:
+  - `afterExtract` for consuming extracted translations after key extraction
+  - `renderExtractedTranslations` for customizing or skipping JS asset injection
+- Export `getI18nextExtractorWebpackPluginHooks`, `AfterExtractPayload`, and `RenderExtractedTranslationsPayload` for plugin consumers
+
 ## 0.1.4
 
 ### Features
