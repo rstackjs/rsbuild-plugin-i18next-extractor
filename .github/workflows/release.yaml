@@ -24,12 +24,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
 
       - name: Setup Package Managers
         run: |
-          npm install -g npm@latest
-          npm --version
           npm install -g corepack@latest --force
           corepack enable
 
