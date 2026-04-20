@@ -43,7 +43,7 @@ export class I18nextExtractorWebpackPlugin {
     });
 
     compiler.hooks.compilation.tap(this.constructor.name, (compilation) => {
-      getI18nextExtractorWebpackPluginHooks(compilation);
+      const hooks = getI18nextExtractorWebpackPluginHooks(compilation);
 
       const locales = getLocalesFromDirectory(
         compiler.context,
@@ -210,9 +210,6 @@ export class I18nextExtractorWebpackPlugin {
                     }
                   }
                 }
-
-                const hooks =
-                  getI18nextExtractorWebpackPluginHooks(compilation);
                 const afterExtractPayload = await hooks.afterExtract.promise({
                   entryName,
                   locales,
