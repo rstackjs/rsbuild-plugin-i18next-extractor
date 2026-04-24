@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1
+
+### Bug Fixes
+
+- Initialize and reuse compilation hooks earlier so integrations can reliably tap `afterExtract` and `renderExtractedTranslations` during the `compilation` phase.
+- support Rsbuild v2
+
 ## 0.2.0
 
 ### Breaking Changes
